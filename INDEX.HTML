@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Adventure - 2D Platformer</title>
+    <style>
+        :root {
+            --primary-color: #87CEEB; /* Sky blue */
+            --secondary-color: #1E90FF; /* Dodger blue */
+            --platform-color: #b97a57;
+            --platform-edge: #5ac528;
+            --text-color: #ffffff;
+            --character-red: #ff5252;
+            --character-blue: #5252ff;
+            --character-green: #52ff52;
+            --coin-color: #ffd700;
+            --pipe-color: #00a800;
+            --question-block: #ffcf40;
+            --flower-red: #ff0000;
+            --flower-stem: #00a800;
+            --cloud-color: #ffffff;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --game-overlay: rgba(0, 0, 0, 0.8);
+            --button-color: #00a800;
+            --button-hover: #00c800;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: var(--primary-color);
+            font-family: 'Press Start 2P', cursive, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        
+        @font-face {
+            font-family: 'Press Start 2P';
+            src: url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        }
+        
+        #game-container {
+            width: 800px;
+            height: 500px;
+            margin: 20px auto;
+            position: relative;
+            background: linear-gradient(to bottom, var(--primary-color), var(--secondary-color));
+            overflow: hidden;
+            box-shadow: 0 0 20px var(--shadow-color);
+            border-radius: 10px;
+            border: 5px solid #333;
+        }
+        
+        #game-area {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .player {
+            width: 40px;
+            height: 50px;
+            position: absolute;
+            bottom: 100px;
+            left: 50px;
+            z-index: 10;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center bottom;
+            transition: transform 0.1s ease;
+            image-rendering: pixelated;
+            border: 5px solid #333;
+        }
+        
+        .player.jumping {
+            transform: scale(1.1, 0.9);
+        }
+        
+        .platform {
+            position: absolute;
+            background-color: var(--platform-color);
+            border-top: 8px solid var(--platform-edge);
+            box-shadow: inset 0 -5px 10px rgba(0, 0, 0, 0.2);
+            border-radius: 5px;
+        }
+        
+        .coin {
+            width: 24px;
+            height: 24px;
+            background-color: var(--coin-color);
+            border-radius: 50%;
+            position: absolute;
+            z-index: 5;
+            box-shadow: 0 0 10px gold;
+            animation: spin 2s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotateY(0deg); }
+            100% { transform: rotateY(360deg); }
+        }
+        
+        .pipe {
+            width: 50px;
+            height: 70px;
+            background-color: var(--pipe-color);
+            position: absolute;
+            z-index: 5;
+            border-radius: 5px 5px 0 0;
+            border-top: 5px solid #008000;
+            box-shadow: inset 0 -5px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .question-block {
+            width: 36px;
+            height: 36px;
+            background-color: var(--question-block);
+            position: absolute;
+            text-align: center;
+            line-height: 36px;
+            font-weight: bold;
+            color: #8b4513;
+            z-index: 5;
+            border-radius: 5px;
+            box-shadow: inset 0 -5px 10px rgba(0, 0, 0, 0.2);
+            font-family: 'Press Start 2P', cursive;
+            font-size: 12px;
+        }
+        
+        .question-block.hit {
+            animation: blockHit 0.3s ease;
+        }
+        
+        @keyframes blockHit {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0); }
+        }
+        
+        .flower {
+            width: 24px;
+            height: 36px;
+            position: absolute;
+            z-index: 4;
+        }
+        
+        .flower::before {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 10px;
+            width: 4px;
+            height: 24px;
+            background-color: var(--flower-stem);
+            border-radius: 2px;
+        }
+        
+        .flower::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background-color: var(--flower-red);
+            border-radius: 50%;
+            box-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
+        }
+        
+        .cloud {
+            position: absolute;
+            background-color: var(--cloud-color);
+            border-radius: 50%;
+            opacity: 0.9;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        
+        #score {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            color: var(--text-color);
+            font-size: 18px;
+            z-index: 20;
+            text-shadow: 2px 2px 4px var(--shadow-color);
+            font-family: 'Press Start 2P', cursive;
+            padding: 5px 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+        }
+        
+        #controls {
+            text-align: center;
+            margin-top: 10px;
+            color: var(--text-color);
+            font-size: 14px;
+            font-family: 'Press Start 2P', cursive;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: var(--game-overlay);
+            color: var(--text-color);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+            z-index: 100;
+            width: 80%;
+            max-width: 400px;
+            border: 3px solid var(--text-color);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+        }
+        
+        #game-over h2 {
+            margin-bottom: 20px;
+            font-size: 24px;
+            color: #ff5252;
+        }
+        
+        #final-score {
+            font-size: 20px;
+            color: var(--coin-color);
+            display: block;
+            margin: 15px 0;
+        }
+        
+        #character-select {
+            position: absolute;
+            top: 0;
+            left: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--game-overlay);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            padding: 20px;
+        }
+        
+        .character-option {
+            margin: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+            border-radius: 15px;
+            overflow: hidden;
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+        }
+        
+        .character-option:hover {
+            transform: scale(1.05);
+            border-color: var(--question-block);
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .character-option.selected {
+            border-color: var(--coin-color);
+            box-shadow: 0 0 20px var(--coin-color);
+        }
+        
+        .character-image {
+            width: 120px;
+            height: 160px;
+            object-fit: contain;
+            border-radius: 8px;
+            background-color: rgba(0, 0, 0, 0.3);
+            image-rendering: pixelated;
+        }
+        
+        .character-options {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin: 20px 0;
+        }
+        
+        h2 {
+            color: var(--text-color);
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px var(--shadow-color);
+        }
+        
+        button {
+            background-color: var(--button-color);
+            color: var(--text-color);
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 15px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        button:hover {
+            background-color: var(--button-hover);
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(0, 200, 0, 0.5);
+        }
+        
+        .character-name {
+            color: var(--text-color);
+            text-align: center;
+            margin-top: 10px;
+            font-size: 14px;
+            text-shadow: 1px 1px 2px var(--shadow-color);
+        }
+        
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--game-overlay);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 150;
+        }
+        
+        #title {
+            font-size: 48px;
+            margin-bottom: 30px;
+            color: var(--coin-color);
+            text-shadow: 4px 4px 0 #8b4513, 8px 8px 0 var(--shadow-color);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        #start-button {
+            font-size: 18px;
+            padding: 15px 30px;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .ground {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100px;
+            background: linear-gradient(to bottom, #5ac528, #4a9c20);
+            z-index: 1;
+        }
+        
+        .background {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+        }
+        
+        .parallax-layer {
+            position: absolute;
+            width: 200%;
+            height: 100%;
+            background-repeat: repeat-x;
+            background-position: bottom;
+            z-index: 0;
+        }
+        
+        .layer-1 {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect x="0" y="80" width="100" height="20" fill="%234a7bc8"/></svg>');
+            animation: parallax 100s linear infinite;
+        }
+        
+        .layer-2 {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><rect x="0" y="85" width="200" height="15" fill="%235c94fc"/></svg>');
+            animation: parallax 60s linear infinite;
+        }
+        
+        @keyframes parallax {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div class="background">
+            <div class="parallax-layer layer-1"></div>
+            <div class="parallax-layer layer-2"></div>
+        </div>
+        <div id="game-area">
+            <div class="ground"></div>
+            <div class="player"></div>
+            <div id="score">SCORE: 0</div>
+        </div>
+        
+        <div id="start-screen">
+            <h1 id="title">SUPER ADVENTURE</h1>
+            <button id="start-button">START GAME</button>
+        </div>
+        
+        <!-- Character selection section removed -->
+        
+        <div id="game-over">
+            <h2>GAME OVER!</h2>
+            <p>YOUR SCORE: <span id="final-score">0</span></p>
+            <button id="restart">PLAY AGAIN</button>
+        </div>
+    </div>
+    
+    <div id="controls">
+        <p>CONTROLS: ARROW KEYS TO MOVE, SPACE TO JUMP</p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Game elements
+            const player = document.querySelector('.player');
+            const gameArea = document.querySelector('#game-area');
+            const scoreDisplay = document.querySelector('#score');
+            const gameOver = document.querySelector('#game-over');
+            const finalScore = document.querySelector('#final-score');
+            const restartButton = document.querySelector('#restart');
+            const characterSelect = document.querySelector('#character-select');
+            const characterOptions = document.querySelectorAll('.character-option');
+            const selectButton = document.querySelector('#select-button');
+            const startScreen = document.querySelector('#start-screen');
+            const startButton = document.querySelector('#start-button');
+            
+            // Character data with sprite images
+            const characters = {
+                1: {
+                    name: "Red Adventurer",
+                    sprite: "https://i.imgur.com/JqYeYn5.png",
+                    jumpHeight: 12,
+                    speed: 5,
+                    scale: 1
+                },
+                2: {
+                    name: "Hoodie Explorer",
+                    sprite: "https://i.imgur.com/vR5ZJQx.png",
+                    jumpHeight: 10,
+                    speed: 6,
+                    scale: 0.9
+                },
+                3: {
+                    name: "NY Cap Jumper",
+                    sprite: "https://i.imgur.com/7WXgj3z.png",
+                    jumpHeight: 11,
+                    speed: 5.5,
+                    scale: 0.95
+                }
+            };
+            
+            // Game state
+            let score = 0;
+            let playerPos = { x: 50, y: 100 };
+            let playerVel = { x: 0, y: 0 };
+            let gravity = 0.5;
+            let isJumping = false;
+            let gameRunning = false;
+            let selectedCharacter = null;
+            let facingRight = true;
+            let lastTimestamp = 0;
+            let gameSpeed = 1;
+            let parallaxOffset = 0;
+            
+            // Key states
+            const keys = {
+                ArrowRight: false,
+                ArrowLeft: false,
+                Space: false,
+                ArrowUp: false
+            };
+            
+            // Platform data
+            const platforms = [
+                { x: 0, y: 60, width: 200, height: 20 },
+                { x: 250, y: 100, width: 150, height: 20 },
+                { x: 450, y: 150, width: 200, height: 20 },
+                { x: 700, y: 120, width: 150, height: 20 },
+                { x: 0, y: 400, width: 800, height: 100 } // Ground
+            ];
+            
+            // Coins data
+            const coins = [
+                { x: 100, y: 300, collected: false },
+                { x: 300, y: 200, collected: false },
+                { x: 500, y: 250, collected: false },
+                { x: 650, y: 180, collected: false },
+                { x: 750, y: 300, collected: false }
+            ];
+            
+            // Pipes data
+            const pipes = [
+                { x: 200, y: 340, height: 60 },
+                { x: 600, y: 340, height: 60 }
+            ];
+            
+            // Question blocks data
+            const questionBlocks = [
+                { x: 150, y: 250, hit: false },
+                { x: 350, y: 200, hit: false },
+                { x: 550, y: 220, hit: false }
+            ];
+            
+            // Flowers data
+            const flowers = [
+                { x: 120, y: 370 },
+                { x: 280, y: 370 },
+                { x: 420, y: 370 },
+                { x: 680, y: 370 }
+            ];
+            
+            // Clouds data
+            const clouds = [
+                { x: 100, y: 80, size: 40, speed: 0.2 },
+                { x: 300, y: 60, size: 50, speed: 0.3 },
+                { x: 500, y: 100, size: 35, speed: 0.25 },
+                { x: 700, y: 70, size: 45, speed: 0.35 }
+            ];
+            
+            // Particles for effects
+            let particles = [];
+            
+            // Start screen
+            startButton.addEventListener('click', function() {
+                startScreen.style.display = 'none';
+                characterSelect.style.display = 'flex';
+            });
+            
+            // Character selection section removed
+            // Set a default character
+            selectedCharacter = characters[1]; // Red Adventurer
+            player.style.backgroundImage = `url('${selectedCharacter.sprite}')`;
+            player.style.transform = `scaleX(${facingRight ? selectedCharacter.scale : -selectedCharacter.scale})`;
+            
+            
+            startGame();
+            
+            // Start game
+            function startGame() {
+                gameRunning = true;
+                createPlatforms();
+                createCoins();
+                createPipes();
+                createQuestionBlocks();
+                createFlowers();
+                createClouds();
+                
+                // Event listeners for gameplay
+                document.addEventListener('keydown', keyDown);
+                document.addEventListener('keyup', keyUp);
+                restartButton.addEventListener('click', restartGame);
+                
+                // Start game loop
+                lastTimestamp = performance.now();
+                requestAnimationFrame(gameLoop);
+            }
+            
+            // Create platforms
+            function createPlatforms() {
+                platforms.forEach(platform => {
+                    const plat = document.createElement('div');
+                    plat.className = 'platform';
+                    plat.style.left = platform.x + 'px';
+                    plat.style.bottom = platform.y + 'px';
+                    plat.style.width = platform.width + 'px';
+                    plat.style.height = platform.height + 'px';
+                    gameArea.appendChild(plat);
+                });
+            }
+            
+            // Create coins
+            function createCoins() {
+                coins.forEach(coin => {
+                    const coinEl = document.createElement('div');
+                    coinEl.className = 'coin';
+                    coinEl.style.left = coin.x + 'px';
+                    coinEl.style.bottom = coin.y + 'px';
+                    gameArea.appendChild(coinEl);
+                });
+            }
+            
+            // Create pipes
+            function createPipes() {
+                pipes.forEach(pipe => {
+                    const pipeEl = document.createElement('div');
+                    pipeEl.className = 'pipe';
+                    pipeEl.style.left = pipe.x + 'px';
+                    pipeEl.style.bottom = pipe.y + 'px';
+                    pipeEl.style.height = pipe.height + 'px';
+                    gameArea.appendChild(pipeEl);
+                });
+            }
+            
+            // Create question blocks
+            function createQuestionBlocks() {
+                questionBlocks.forEach((block, index) => {
+                    const blockEl = document.createElement('div');
+                    blockEl.className = 'question-block';
+                    blockEl.style.left = block.x + 'px';
+                    blockEl.style.bottom = block.y + 'px';
+                    blockEl.textContent = '?';
+                    blockEl.dataset.index = index;
+                    gameArea.appendChild(blockEl);
+                    
+                    // Add hit detection
+                    blockEl.addEventListener('click', function() {
+                        if (!block.hit && playerPos.y + 40 >= block.y && playerPos.y <= block.y + 36) {
+                            hitQuestionBlock(index);
+                        }
+                    });
+                });
+            }
+            
+            // Create flowers
+            function createFlowers() {
+                flowers.forEach(flower => {
+                    const flowerEl = document.createElement('div');
+                    flowerEl.className = 'flower';
+                    flowerEl.style.left = flower.x + 'px';
+                    flowerEl.style.bottom = flower.y + 'px';
+                    gameArea.appendChild(flowerEl);
+                });
+            }
+            
+            // Create clouds
+            function createClouds() {
+                clouds.forEach(cloud => {
+                    const cloudEl = document.createElement('div');
+                    cloudEl.className = 'cloud';
+                    cloudEl.style.left = cloud.x + 'px';
+                    cloudEl.style.top = cloud.y + 'px';
+                    cloudEl.style.width = cloud.size + 'px';
+                    cloudEl.style.height = cloud.size / 2 + 'px';
+                    gameArea.appendChild(cloudEl);
+                });
+            }
+            
+            // Hit question block
+            function hitQuestionBlock(index) {
+                const block = questionBlocks[index];
+                if (block.hit) return;
+                
+                block.hit = true;
+                const blockEl = document.querySelector(`.question-block[data-index="${index}"]`);
+                blockEl.classList.add('hit');
+                
+                // Add score
+                score += 20;
+                updateScore();
+                
+                // Create coin particles
+                createParticles(block.x + 18, block.y + 36, 5, 'gold');
+                
+                // Play sound (would be added if we had audio)
+                // playSound('coin');
+            }
+            
+            // Create particles
+            function createParticles(x, y, count, color) {
+                for (let i = 0; i < count; i++) {
+                    particles.push({
+                        x: x,
+                        y: y,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: -Math.random() * 5,
+                        size: Math.random() * 6 + 3,
+                        color: color,
+                        life: 60 + Math.random() * 40
+                    });
+                }
+            }
+            
+            // Update particles
+            function updateParticles() {
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.1;
+                    p.life--;
+                    
+                    if (p.life <= 0) {
+                        particles.splice(i, 1);
+                    }
+                }
+                
+                // Render particles
+                const oldParticles = document.querySelectorAll('.particle');
+                oldParticles.forEach(p => p.remove());
+                
+                particles.forEach(p => {
+                    const particleEl = document.createElement('div');
+                    particleEl.className = 'particle';
+                    particleEl.style.left = p.x + 'px';
+                    particleEl.style.top = p.y + 'px';
+                    particleEl.style.width = p.size + 'px';
+                    particleEl.style.height = p.size + 'px';
+                    particleEl.style.backgroundColor = p.color;
+                    gameArea.appendChild(particleEl);
+                });
+            }
+            
+            // Key press handlers
+            function keyDown(e) {
+                if (keys[e.code] !== undefined) {
+                    keys[e.code] = true;
+                    e.preventDefault();
+                }
+                
+                // Space jump
+                if ((e.code === 'Space' || e.code === 'ArrowUp') && !isJumping && gameRunning) {
+                    isJumping = true;
+                    playerVel.y = selectedCharacter.jumpHeight;
+                    player.classList.add('jumping');
+                    setTimeout(() => player.classList.remove('jumping'), 200);
+                }
+            }
+            
+            function keyUp(e) {
+                if (keys[e.code] !== undefined) {
+                    keys[e.code] = false;
+                    e.preventDefault();
+                }
+            }
+            
+            // Check for collisions
+            function checkPlatformCollisions() {
+                let onPlatform = false;
+                
+                platforms.forEach(platform => {
+                    if (
+                        playerPos.x < platform.x + platform.width &&
+                        playerPos.x + 40 > platform.x &&
+                        playerPos.y < platform.y + platform.height &&
+                        playerPos.y + 50 > platform.y &&
+                        playerVel.y <= 0
+                    ) {
+                        const overlapY = (playerPos.y) - (platform.y + platform.height);
+                        
+                        if (overlapY > -15) {
+                            playerPos.y = platform.y + platform.height;
+                            playerVel.y = 0;
+                            isJumping = false;
+                            onPlatform = true;
+                        }
+                    }
+                });
+                
+                if (!onPlatform && playerPos.y > 0) {
+                    isJumping = true;
+                }
+            }
+            
+            // Check for coin collisions
+            function checkCoinCollisions() {
+                const coinElements = document.querySelectorAll('.coin');
+                
+                coins.forEach((coin, index) => {
+                    if (!coin.collected &&
+                        playerPos.x < coin.x + 24 &&
+                        playerPos.x + 40 > coin.x &&
+                        playerPos.y < coin.y + 24 &&
+                        playerPos.y + 50 > coin.y
+                    ) {
+                        coin.collected = true;
+                        coinElements[index].style.display = 'none';
+                        score += 10;
+                        updateScore();
+                        
+                        // Create particles
+                        createParticles(coin.x + 12, coin.y + 12, 8, 'gold');
+                    }
+                });
+            }
+            
+            // Check for pipe collisions
+            function checkPipeCollisions() {
+                pipes.forEach(pipe => {
+                    if (
+                        playerPos.x < pipe.x + 50 &&
+                        playerPos.x + 40 > pipe.x &&
+                        playerPos.y < pipe.y + pipe.height &&
+                        playerPos.y + 50 > pipe.y
+                    ) {
+                        // Simple collision resolution
+                        if (playerPos.x + 40 - pipe.x < 15) {
+                            playerPos.x = pipe.x - 40;
+                        } else if (pipe.x + 50 - playerPos.x < 15) {
+                            playerPos.x = pipe.x + 50;
+                        }
+                        
+                        if (playerPos.y <= pipe.y + pipe.height && playerPos.y > pipe.y + pipe.height - 15) {
+                            playerPos.y = pipe.y + pipe.height;
+                            playerVel.y = 0;
+                            isJumping = false;
+                        }
+                    }
+                });
+            }
+            
+            // Check question block collisions from below
+            function checkQuestionBlockCollisions() {
+                questionBlocks.forEach((block, index) => {
+                    if (!block.hit &&
+                        playerPos.x < block.x + 36 &&
+                        playerPos.x + 40 > block.x &&
+                        playerPos.y < block.y + 36 &&
+                        playerPos.y + 50 > block.y &&
+                        playerVel.y > 0 // Moving upward
+                    ) {
+                        hitQuestionBlock(index);
+                    }
+                });
+            }
+            
+            // Update clouds
+            function updateClouds(timestamp) {
+                const cloudElements = document.querySelectorAll('.cloud');
+                clouds.forEach((cloud, index) => {
+                    cloud.x -= cloud.speed * gameSpeed;
+                    if (cloud.x < -cloud.size) {
+                        cloud.x = 800;
+                    }
+                    cloudElements[index].style.left = cloud.x + 'px';
+                });
+            }
+            
+            // Update score display
+            function updateScore() {
+                scoreDisplay.textContent = `SCORE: ${score}`;
+            }
+            
+            // Update player position
+            function updatePlayer() {
+                // Movement controls - character-specific speed
+                if (keys.ArrowRight) {
+                    playerVel.x = selectedCharacter.speed;
+                    if (!facingRight) {
+                        facingRight = true;
+                        player.style.transform = `scaleX(${selectedCharacter.scale})`;
+                    }
+                } else if (keys.ArrowLeft) {
+                    playerVel.x = -selectedCharacter.speed;
+                    if (facingRight) {
+                        facingRight = false;
+                        player.style.transform = `scaleX(-${selectedCharacter.scale})`;
+                    }
+                } else {
+                    playerVel.x *= 0.7; // Friction
+                    if (Math.abs(playerVel.x) < 0.1) playerVel.x = 0;
+                }
+                
+                // Apply gravity
+                playerVel.y -= gravity * gameSpeed;
+                
+                // Update position
+                playerPos.x += playerVel.x * gameSpeed;
+                playerPos.y += playerVel.y * gameSpeed;
+                
+                // World boundaries
+                if (playerPos.x < 0) {
+                    playerPos.x = 0;
+                    playerVel.x = 0;
+                }
+                if (playerPos.x > 760) {
+                    playerPos.x = 760;
+                    playerVel.x = 0;
+                }
+                
+                // Check if player fell out of the world
+                if (playerPos.y < -100) {
+                    endGame();
+                }
+                
+                // Update player element position
+                player.style.left = playerPos.x + 'px';
+                player.style.bottom = playerPos.y + 'px';
+            }
+            
+            // End game
+            function endGame() {
+                gameRunning = false;
+                finalScore.textContent = score;
+                gameOver.style.display = 'block';
+            }
+            
+            // Restart game
+            function restartGame() {
+                // Reset game state
+                score = 0;
+                playerPos = { x: 50, y: 100 };
+                playerVel = { x: 0, y: 0 };
+                isJumping = false;
+                gameRunning = true;
+                
+                // Reset UI
+                updateScore();
+                gameOver.style.display = 'none';
+                
+                // Reset coins
+                const coinElements = document.querySelectorAll('.coin');
+                coins.forEach((coin, index) => {
+                    coin.collected = false;
+                    coinElements[index].style.display = 'block';
+                });
+                
+                // Reset question blocks
+                const blockElements = document.querySelectorAll('.question-block');
+                questionBlocks.forEach((block, index) => {
+                    block.hit = false;
+                    blockElements[index].classList.remove('hit');
+                });
+                
+                // Clear particles
+                particles = [];
+                
+                // Reset player position
+                player.style.left = playerPos.x + 'px';
+                player.style.bottom = playerPos.y + 'px';
+            }
+            
+            // Game loop
+            function gameLoop(timestamp) {
+                if (!lastTimestamp) lastTimestamp = timestamp;
+                const deltaTime = timestamp - lastTimestamp;
+                lastTimestamp = timestamp;
+                
+                if (gameRunning) {
+                    // Update game speed based on delta time for smooth animation
+                    gameSpeed = deltaTime / 16.67; // Normalize to 60fps
+                    
+                    updatePlayer();
+                    checkPlatformCollisions();
+                    checkCoinCollisions();
+                    checkPipeCollisions();
+                    checkQuestionBlockCollisions();
+                    updateClouds(timestamp);
+                    updateParticles();
+                }
+                
+                requestAnimationFrame(gameLoop);
+            }
+        });
+    </script>
+    <div id="game-over" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); justify-content: center; align-items: center; flex-direction: column; color: white;">
+        <div id="final-score" style="margin-bottom: 20px;"></div>
+        <button id="restart">Reiniciar Juego</button>
+    </div>
+</body>
+</html>
